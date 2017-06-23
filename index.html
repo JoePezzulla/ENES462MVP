@@ -74,6 +74,7 @@
   <br><br><br>
   <button id="displayerButton" type="button" onclick= "monteCarloIterator(); displayCalculations(); displayGraph()" class="bigButton">Calculate Max, Probable, and Mean ROI Error</button><br>
   <span id="calculateMax"></span><br>
+  <span id="calculateMin"></span><br>
   <span id="calculateProb"></span><br>
   <span id="calculateMean"></span><br>
   <span id="percentOff"></span>
@@ -91,23 +92,29 @@ All formulas and calculations derived by <a href="https://arxiv.org/ftp/arxiv/pa
       var maxROI= findMaxROIError();
       var probROI= findProbROIError();
       var meanROI= monteCarloIterator();
+      var minROI= findMinROIError();
       var myChart = new Chart(ctx, {
        type: 'bar',
        data: {
-         labels: ["Max ROI Error", "Mean ROI Error", "Probable ROI Error"],
+         labels: ["Max ROI Error", "Min ROI Error", "Mean ROI Error", "Probable ROI Error"],
          datasets: [{
             label: 'Max ROI Error',
-            data: [maxROI, null, null],
+            data: [maxROI, null, null, null],
             backgroundColor: "rgba(255, 0, 0, 0.5)",
             borderColor: "rgba(255, 0, 0, 1)"
-          }, {
+          },  {
+            label: 'Min ROI Error',
+            data: [null, minROI, null, null],
+            backgroundColor: "rgba(255, 255, 0, 0.5)",
+            borderColor: "rgba(255, 255, 0, 1)"
+         }, {
             label: 'Probable ROI Error',
-            data: [null, null, probROI],
+            data: [null, null, null, probROI],
             backgroundColor: "rgba(0, 255, 0, 0.5)",
             borderColor: "rgba(0, 255, 0, 1)"
          }, {
             label: 'Mean ROI Error',
-            data: [null, meanROI, null],
+            data: [null, null, meanROI, null],
             backgroundColor: "rgba(0, 0, 255, 0.5)",
             borderColor: "rgba(0, 0, 255, 1)"
          }]
@@ -200,10 +207,12 @@ All formulas and calculations derived by <a href="https://arxiv.org/ftp/arxiv/pa
     
     
     function displayCalculations(){
-      var maxString= "Max ROI Error: " + findMaxROIError();
-      var probString= "Probable ROI Error: " + findProbROIError();
+      var maxString= "Max ROI Error: " + (findMaxROIError()*100)+ "%";
+      var probString= "Probable ROI Error: " + (findProbROIError()*100)+ "%";
+      var minString= "Min ROI Error: " + (findMinROIError()*100)+ "%";
       document.getElementById("calculateMax").innerHTML= maxString ;
       document.getElementById("calculateProb").innerHTML= probString ;
+      document.getElementById("calculateMin").innerHTML= minString ;
       
     }
     
@@ -312,32 +321,24 @@ All formulas and calculations derived by <a href="https://arxiv.org/ftp/arxiv/pa
          rollingSum+= monteCarloSimulation();
        }
        var returnMean= (rollingSum)/30000;
-       document.getElementById("calculateMean").innerHTML= "Mean ROI Error from Monte Carlo Simulation: " + returnMean;
-       document.getElementById("percentOff").innerHTML= "Percent of ROI Off: " + ((returnMean/(benEstArraySum-costEstArraySum))*100)+ "%";
+       returnMean+= findMinROIError();
+       document.getElementById("calculateMean").innerHTML= "Mean ROI Error from Monte Carlo Simulation: " + (returnMean*100)+ "%";
        return returnMean;
      }
       
-    
+    function findMinROIError() {
+    var minROIError= ((benEstArraySum-benErrArraySum)/(costEstArraySum+ costErrArraySum))-1;
+    return minROIError;
+    }
     function findMaxROIError() {
-    var maxROIError= (benEstArraySum/costEstArraySum)*((benErrArraySum/benEstArraySum)+(costErrArraySum/costEstArraySum));
+    var maxROIError= ((benEstArraySum+benErrArraySum)/(costEstArraySum- costErrArraySum))-1;
     return maxROIError;
     }
     function findProbROIError() {
-      var rollingSumOne=0;
-      var returnValueOne=0;
-      for (var i=0; i<indivBenefitErrArr.length; i++){
-        var x= parseInt(indivBenefitErrArr[i]);
-        rollingSumOne= rollingSumOne+ (x*x);
-     }
-      nonWorstCaseBenefitError= Math.sqrt(rollingSumOne);
-      var rollingSumTwo=0;
-      var returnValueTwo=0;
-      for (var i=0; i<indivCostErrArr.length; i++){
-        var x= parseInt(indivCostErrArr[i]);
-        rollingSumTwo= rollingSumTwo+ (x*x);
-     }
-      nonWorstCaseCostError= Math.sqrt(rollingSumTwo);
+      nonWorstCaseBenefitError= benErrArraySum;
+      nonWorstCaseCostError= costErrArraySum;
     var probableROIError= (benEstArraySum/costEstArraySum)*(Math.sqrt((nonWorstCaseBenefitError/benEstArraySum)*(nonWorstCaseBenefitError/benEstArraySum))+(nonWorstCaseCostError/costEstArraySum)*(nonWorstCaseCostError/costEstArraySum));
+    probableROIError+= findMinROIError();
     return probableROIError;
     }
                      
